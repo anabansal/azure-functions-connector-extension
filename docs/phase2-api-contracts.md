@@ -1,4 +1,4 @@
-# Phase 2 API Contracts — Connector Trigger Scaling for Azure Functions
+# Phase 2 API Contracts ΓÇö Connector Trigger Scaling for Azure Functions
 
 ## Summary
 
@@ -18,11 +18,11 @@ This document defines the API contracts for Phase 2 of the Connector Trigger Sca
 ## Table of Contents
 
 1. [Problem Statement](#1-problem-statement)
-2. [Contract 1 — PUT TriggerConfig (Modified Control Plane)](#2-contract-1--put-triggerconfig-modified-control-plane)
-3. [Contract 2 — GET TriggerConfig (Modified Control Plane)](#3-contract-2--get-triggerconfig-modified-control-plane)
-4. [Contract 3 — GET /events (New Data Plane)](#4-contract-3--get-events-new-data-plane)
-5. [Contract 4 — POST /events/acknowledge (New Data Plane)](#5-contract-4--post-eventsacknowledge-new-data-plane)
-6. [Contract 5 — GET /metrics (New Data Plane)](#6-contract-5--get-metrics-new-data-plane)
+2. [Contract 1 ΓÇö PUT TriggerConfig (Modified Control Plane)](#2-contract-1--put-triggerconfig-modified-control-plane)
+3. [Contract 2 ΓÇö GET TriggerConfig (Modified Control Plane)](#3-contract-2--get-triggerconfig-modified-control-plane)
+4. [Contract 3 ΓÇö GET /events (New Data Plane)](#4-contract-3--get-events-new-data-plane)
+5. [Contract 4 ΓÇö POST /events/acknowledge (New Data Plane)](#5-contract-4--post-eventsacknowledge-new-data-plane)
+6. [Contract 5 ΓÇö GET /metrics (New Data Plane)](#6-contract-5--get-metrics-new-data-plane)
 7. [Message Envelope Schema](#7-message-envelope-schema)
 8. [Authentication Model](#8-authentication-model)
 
@@ -39,7 +39,7 @@ The Connector Extension for Azure Functions implements `ITargetScaler` to enable
 - But now **Two independent consumers** (Function Host + SM) need access to the same event data through different interfaces (consume vs. count).
 
 
-## 2. Contract 1 — PUT TriggerConfig (Modified Control Plane)
+## 2. Contract 1 ΓÇö PUT TriggerConfig (Modified Control Plane)
 
 ### Overview
 
@@ -55,7 +55,7 @@ PUT https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{
 
 ARM Bearer token (existing, no change).
 
-### Request Body — Complete Schema
+### Request Body ΓÇö Complete Schema
 
 ```diff
 {
@@ -98,14 +98,14 @@ ARM Bearer token (existing, no change).
 
     "metadata": "<any JSON value> | null",
 
-    "notificationDetails": {                              // existing — unchanged
+    "notificationDetails": {                              // existing ΓÇö unchanged
       "callbackUrl": "string",
       "httpMethod": "Post | Get | Put | Patch | Delete | null",
       "authentication": "<FlowAuthentication object> | null",
       "body": "<any JSON value> | null"
     },
 
-+   "eventSubscription": {                                // NEW — alternative to notificationDetails
++   "eventSubscription": {                                // NEW ΓÇö alternative to notificationDetails
 +     "allowedConsumers": [
 +       {
 +         "objectId": "string",
@@ -120,8 +120,8 @@ ARM Bearer token (existing, no change).
 
 The customer provides **either** `notificationDetails` (webhook delivery) **or** `eventSubscription` (managed queue delivery). Not both.
 
-- `notificationDetails` — **unchanged from today**. Events are delivered via HTTP POST to the customer's callbackUrl.
-- `eventSubscription` — **new**. Events are buffered in a system-managed queue and exposed via data plane endpoints for the extension to consume. Authorization to the data plane endpoints is handled via Azure RBAC role assignment on the Connector Namespace or TriggerConfig resource (role definition and exact scope to be finalized during implementation).
+- `notificationDetails` ΓÇö **unchanged from today**. Events are delivered via HTTP POST to the customer's callbackUrl.
+- `eventSubscription` ΓÇö **new**. Events are buffered in a system-managed queue and exposed via data plane endpoints for the extension to consume. Authorization to the data plane endpoints is handled via Azure RBAC role assignment on the Connector Namespace or TriggerConfig resource (role definition and exact scope to be finalized during implementation).
 
 ### Field-by-Field Reference
 
@@ -138,20 +138,20 @@ The customer provides **either** `notificationDetails` (webhook delivery) **or**
 
 ```
 IF eventSubscription is present:
-  - notificationDetails MUST NOT be present → 400 if both are set
+  - notificationDetails MUST NOT be present ΓåÆ 400 if both are set
     Reason: events are delivered via managed queue, not webhook. Can't have both.
 
 IF notificationDetails is present:
-  - callbackUrl MUST be set → 400 if absent
-  - callbackUrl MUST be a valid absolute HTTPS URI → 400 if not
-  - eventSubscription MUST NOT be present → 400 if both are set
+  - callbackUrl MUST be set ΓåÆ 400 if absent
+  - callbackUrl MUST be a valid absolute HTTPS URI ΓåÆ 400 if not
+  - eventSubscription MUST NOT be present ΓåÆ 400 if both are set
   - All existing validation rules apply unchanged
 
 IF neither is present:
-  - 400 — one delivery mechanism must be specified
+  - 400 ΓÇö one delivery mechanism must be specified
 ```
 
-### Example — Event Subscription Mode (new)
+### Example ΓÇö Event Subscription Mode (new)
 
 ```diff
 PUT https://management.azure.com/subscriptions/268065b9-dd0a-4246-b686-516f30c2c91d/resourceGroups/t-anabansal-rg-1/providers/Microsoft.Web/connectorGateways/t-anabansal-connector-ns/triggerConfigs/on-new-email?api-version=2026-03-01-preview
@@ -176,7 +176,7 @@ Content-Type: application/json
       "frequency": "Minute",
       "interval": 3
     },
-+   "eventSubscription": {                                        // NEW — instead of notificationDetails
++   "eventSubscription": {                                        // NEW ΓÇö instead of notificationDetails
 +     "allowedConsumers": [
 +       {
 +         "objectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -192,7 +192,7 @@ Content-Type: application/json
 }
 ```
 
-### Response — 201 Created (Event Subscription Mode)
+### Response ΓÇö 201 Created (Event Subscription Mode)
 
 ```
 HTTP/1.1 201 Created
@@ -237,7 +237,7 @@ Content-Type: application/json
 +     ]
 +   },
 +   "dataPlaneEndpoint": {                                        // NEW
-+     "baseUri": "<data plane base URL — structure determined by implementation>"
++     "baseUri": "<data plane base URL ΓÇö structure determined by implementation>"
 +   }
   },
   "systemData": {
@@ -251,7 +251,7 @@ Content-Type: application/json
 }
 ```
 
-### Example — Webhook Mode (today's behavior, unchanged)
+### Example ΓÇö Webhook Mode (today's behavior, unchanged)
 
 ```
 PUT https://management.azure.com/subscriptions/268065b9-dd0a-4246-b686-516f30c2c91d/resourceGroups/t-anabansal-rg-1/providers/Microsoft.Web/connectorGateways/t-anabansal-connector-ns/triggerConfigs/on-new-email?api-version=2026-03-01-preview
@@ -297,7 +297,7 @@ Content-Type: application/json
 
 ---
 
-## 3. Contract 2 — GET TriggerConfig (Modified Control Plane)
+## 3. Contract 2 ΓÇö GET TriggerConfig (Modified Control Plane)
 
 ### Overview
 
@@ -309,7 +309,7 @@ The GET response is modified to include a `dataPlaneEndpoint` section when `even
 GET https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Web/connectorGateways/{gatewayName}/triggerConfigs/{triggerConfigName}?api-version=2026-03-01-preview
 ```
 
-### Response — Event Subscription Mode
+### Response ΓÇö Event Subscription Mode
 
 ```diff
 {
@@ -349,7 +349,7 @@ GET https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{
 +     ]
 +   },
 +   "dataPlaneEndpoint": {                                        // NEW
-+     "baseUri": "<data plane base URL — structure determined by implementation>"
++     "baseUri": "<data plane base URL ΓÇö structure determined by implementation>"
 +   }
   },
   "systemData": {
@@ -367,13 +367,13 @@ GET https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{
 
 | Field | Type | Present when | Purpose |
 |---|---|---|---|
-| `eventSubscription` | object | Present if managed queue delivery was configured | Echoed back — presence indicates managed queue delivery |
+| `eventSubscription` | object | Present if managed queue delivery was configured | Echoed back ΓÇö presence indicates managed queue delivery |
 | `dataPlaneEndpoint` | object | `eventSubscription` is present | Container for data plane URL |
 | `dataPlaneEndpoint.baseUri` | string | `eventSubscription` is present | Base URL for data plane calls. Append `/events`, `/events/acknowledge`, `/metrics`. |
 
 The `dataPlaneEndpoint.baseUri` URL structure is determined by the implementation team. The extension reads this URL from the response and appends the path suffixes for each data plane call.
 
-### Response — Webhook Mode (unchanged from today)
+### Response ΓÇö Webhook Mode (unchanged from today)
 
 ```json
 {
@@ -402,7 +402,7 @@ No `dataPlaneEndpoint` field. No `eventSubscription` field. Fully backward compa
 
 ---
 
-## 4. Contract 3 — GET /events (New Data Plane)
+## 4. Contract 3 ΓÇö GET /events (New Data Plane)
 
 ### Overview
 
@@ -420,24 +420,24 @@ GET {dataPlaneEndpoint.baseUri}/events
 Authorization: Bearer <token from DefaultAzureCredential>
 ```
 
-Same as /metrics — caller must be authorized to access this TriggerConfig's data plane.
+Same as /metrics ΓÇö caller must be authorized to access this TriggerConfig's data plane.
 
 ### Request
 
 ```
-GET {dataPlaneEndpoint.baseUri}/events
+GET {dataPlaneEndpoint.baseUri}/events?maxMessages={integer}&maxWaitSeconds={integer}
 ```
 
-Request body (optional):
+**Query Parameters (all optional):**
 
-```json
-{
-  "maxMessages": "<integer — max events to return. Default and range TBD during implementation>",
-  "maxWaitSeconds": "<integer — long-poll timeout in seconds. Returns empty array on timeout. Set to 0 for immediate response. Default and range TBD during implementation>"
-}
-```
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `maxMessages` | integer | Max events to return. Default and range TBD during implementation. |
+| `maxWaitSeconds` | integer | Long-poll timeout in seconds. Returns empty array on timeout. Set to `0` for immediate response. Default and range TBD during implementation. |
 
-### Response — 200 OK (events available)
+> **Note:** Parameters are passed as query string values, not in a request body. GET requests with bodies are not reliably supported across proxies, load balancers, and HTTP clients.
+
+### Response ΓÇö 200 OK (events available)
 
 ```json
 {
@@ -472,7 +472,7 @@ Request body (optional):
 }
 ```
 
-### Response — 200 OK (no events, long-poll timeout)
+### Response ΓÇö 200 OK (no events, long-poll timeout)
 
 ```json
 {
@@ -484,12 +484,12 @@ Request body (optional):
 
 | Field | Type | Description |
 |---|---|---|
-| `eventId` | string | Unique identifier for this event. Stable across retries — callers can use it for idempotency and deduplication. |
+| `eventId` | string | Unique identifier for this event. Stable across retries ΓÇö callers can use it for idempotency and deduplication. |
 | `ackToken` | string | Acknowledgment receipt. Must be sent back in POST /events/acknowledge within the acknowledgment window. |
 | `deliveryCount` | integer | How many times this event has been delivered. 1 = first delivery. Increments each time the lock expires without acknowledgment. After exceeding the max delivery count (configured on the queue), the event is dead-lettered. |
 | `enqueuedTimeUtc` | string (ISO 8601) | When the event was enqueued into the buffer. |
 | `ackDeadlineUtc` | string (ISO 8601) | When the peek-ack expires for this event. If the extension hasn't acknowledged by this time, the event reappears for retry. The extension can use this to decide whether to continue processing or skip. |
-| `trackingId` | string (GUID) | Primary correlation ID for log stitching across BPM → ApiHub → Connector. Unique per event. Use this to search Kusto logs for the full execution trace. |
+| `trackingId` | string (GUID) | Primary correlation ID for log stitching across BPM ΓåÆ ApiHub ΓåÆ Connector. Unique per event. Use this to search Kusto logs for the full execution trace. |
 | `workflowRunId` | string | Links back to the hidden workflow's run history in BPM. Unique per event. Use this to look up the full run details (trigger output, action result, timing). |
 | `splitOnEnabled` | boolean | Whether splitOn was applied to this trigger output. When `true`, `data` is a single item from the array. When `false`, `data` is the full trigger output (may be an array). Extension uses this to know how to deserialize `data`. |
 | `data` | any JSON | **The actual trigger payload from the connector.** This is the raw connector response body (what `@triggerBody()` evaluates to). For splitOn triggers, this is a single element from the array. The extension deserializes this into the customer's POCO type (e.g., `Office365OnNewEmailTriggerPayload`). |
@@ -497,13 +497,13 @@ Request body (optional):
 ### Behavior
 
 - **peek-ack semantics**: Returned events are invisible to other receivers for the acknowledgment window (configured on the queue). If not acknowledged, they reappear in the queue.
-- **At-least-once delivery**: Events may be delivered more than once if the caller crashes between receive and acknowledge. The `eventId` is stable across retries — callers can use it for idempotency.
+- **At-least-once delivery**: Events may be delivered more than once if the caller crashes between receive and acknowledge. The `eventId` is stable across retries ΓÇö callers can use it for idempotency.
 - **Long polling**: If no events are available and `maxWaitSeconds > 0`, the request blocks waiting for events. Returns empty array on timeout.
 
 
 ---
 
-## 5. Contract 4 — POST /events/acknowledge (New Data Plane)
+## 5. Contract 4 ΓÇö POST /events/acknowledge (New Data Plane)
 
 ### Overview
 
@@ -542,9 +542,9 @@ Content-Type: application/json
 | `events[].eventId` | string | Yes | The event ID from the GET /events response. Included for traceability and logging. |
 | `events[].ackToken` | string | Yes | The acknowledgment token from the GET /events response. |
 
-### Response — 200 OK
+### Response ΓÇö 200 OK
 
-> **Example:** 3 events submitted — 2 acknowledged successfully, 1 acknowledgment window had expired.
+> **Example:** 3 events submitted ΓÇö 2 acknowledged successfully, 1 acknowledgment window had expired.
 
 ```json
 {
@@ -569,25 +569,25 @@ Content-Type: application/json
 | `results` | array | Per-event status. |
 | `results[].eventId` | string | The event ID that was submitted. |
 | `results[].ackToken` | string | The acknowledgment token that was submitted. |
-| `results[].status` | enum | `Acknowledged` — completed successfully. `AckExpired` — acknowledgment window expired, event reappeared. `NotFound` — token doesn't match any pending event (already acknowledged or invalid). `Failed` — unexpected error. |
+| `results[].status` | enum | `Acknowledged` ΓÇö completed successfully. `AckExpired` ΓÇö acknowledgment window expired, event reappeared. `NotFound` ΓÇö token doesn't match any pending event (already acknowledged or invalid). `Failed` ΓÇö unexpected error. |
 
 ### Per-ack-token status values
 
 | Status | Meaning | Action needed |
 |---|---|---|
 | `Acknowledged` | Event permanently removed from queue. | None. |
-| `AckExpired` | Lock expired before acknowledge arrived. Event reappeared in queue and will be redelivered on the next GET /events call. | None — automatic retry via redelivery. Log a warning if frequent. |
-| `NotFound` | acknowledgment token is invalid or event was already acknowledged. | None — likely a duplicate ack. Idempotent. |
+| `AckExpired` | Lock expired before acknowledge arrived. Event reappeared in queue and will be redelivered on the next GET /events call. | None ΓÇö automatic retry via redelivery. Log a warning if frequent. |
+| `NotFound` | acknowledgment token is invalid or event was already acknowledged. | None ΓÇö likely a duplicate ack. Idempotent. |
 | `Failed` | Backend error (e.g., transient failure). | Retry the acknowledge call. |
 
 
 ---
 
-## 6. Contract 5 — GET /metrics (New Data Plane)
+## 6. Contract 5 ΓÇö GET /metrics (New Data Plane)
 
 ### Overview
 
-Returns the current queue depth and scaling metrics. Called by the Scale Monitor every 10 seconds. This is the **primary contract for enabling target based scaling** — it provides the `pendingEventCount` that feeds into `ConnectorTargetScaler.GetScaleResultAsync()`.
+Returns the current queue depth and scaling metrics. Called by the Scale Monitor every 10 seconds. This is the **primary contract for enabling target based scaling** ΓÇö it provides the `pendingEventCount` that feeds into `ConnectorTargetScaler.GetScaleResultAsync()`.
 
 ### Endpoint
 
@@ -601,13 +601,13 @@ GET {dataPlaneEndpoint.baseUri}/metrics
 Authorization: Bearer <token from DefaultAzureCredential>
 ```
 
-The token's `oid` claim must be authorized to access this TriggerConfig's data plane (via resource-level authentication — mechanism TBD).
+The token's `oid` claim must be authorized to access this TriggerConfig's data plane (via resource-level authentication ΓÇö mechanism TBD).
 
 ### Request
 
 No query parameters. No request body. Simple GET.
 
-### Response — 200 OK
+### Response ΓÇö 200 OK
 
 ```json
 {
@@ -622,8 +622,8 @@ No query parameters. No request body. Simple GET.
 
 | Field | Type | Description | Used by |
 |---|---|---|---|
-| `pendingEventCount` | long | Number of active events. **This is the backlog.** | `ConnectorMetricsProvider` → `ConnectorTargetScaler` math |
-| `oldestEventAgeSeconds` | long | Age of the oldest pending event in seconds. Useful for throttle-down decisions — if events are old, don't scale down. | `ConnectorTargetScaler` throttle logic |
+| `pendingEventCount` | long | Number of active events. **This is the backlog.** | `ConnectorMetricsProvider` ΓåÆ `ConnectorTargetScaler` math |
+| `oldestEventAgeSeconds` | long | Age of the oldest pending event in seconds. Useful for throttle-down decisions ΓÇö if events are old, don't scale down. | `ConnectorTargetScaler` throttle logic |
 | `lastEnqueuedTimeUtc` | string (ISO 8601) | Timestamp of the most recently enqueued event. SM can skip scale math entirely if no new events have arrived since the last poll cycle. | Staleness detection |
 | `lastDequeuedTimeUtc` | string (ISO 8601) \| null | When the most recent event was acknowledged. Null if never consumed. | Staleness detection |
 
@@ -631,11 +631,11 @@ No query parameters. No request body. Simple GET.
 
 ```
 SM calls ConnectorTargetScaler.GetScaleResultAsync()
-  → ConnectorMetricsProvider.GetMetricsAsync()
-    → HTTP GET /metrics → { pendingEventCount: 47 }
-  → math: ceil(47 / (concurrency × batchSize))
-    → e.g., ceil(47 / (16 × 1)) = 3
-  → return TargetScalerResult { TargetWorkerCount = 3 }
+  ΓåÆ ConnectorMetricsProvider.GetMetricsAsync()
+    ΓåÆ HTTP GET /metrics ΓåÆ { pendingEventCount: 47 }
+  ΓåÆ math: ceil(47 / (concurrency ├ù batchSize))
+    ΓåÆ e.g., ceil(47 / (16 ├ù 1)) = 3
+  ΓåÆ return TargetScalerResult { TargetWorkerCount = 3 }
 ```
 
 The `ConnectorTargetScaler` math is unchanged from Phase 1. Only the data source changes (real count vs. mock).
@@ -654,15 +654,15 @@ The envelope carries **only fields that vary per event or are required by the co
 
 | Field | Purpose | Source in BPM | Per-event? |
 |---|---|---|---|
-| `eventId` | Unique message identifier | Auto-assigned by the event buffer | ✅ Yes |
-| `ackToken` | Acknowledgment receipt for acknowledge | Event buffer metadata | ✅ Yes |
-| `deliveryCount` | Retry attempt counter | Event buffer metadata | ✅ Yes |
-| `enqueuedTimeUtc` | When the event was enqueued | Event buffer metadata | ✅ Yes |
-| `ackDeadlineUtc` | When the peek-ack expires | Event buffer metadata | ✅ Yes |
-| `trackingId` | Primary correlation ID | `RequestCorrelationContext.CurrentActivityId` | ✅ Yes |
-| `workflowRunId` | Links to BPM run history | `metadata.FlowRunSequenceId` | ✅ Yes |
-| `splitOnEnabled` | Whether data is single item or array | `trigger.SplitOn != null` | ✅ Per poll cycle |
-| `data` | Raw trigger payload from connector | `@triggerBody()` resolved value | ✅ Yes |
+| `eventId` | Unique message identifier | Auto-assigned by the event buffer | Γ£à Yes |
+| `ackToken` | Acknowledgment receipt for acknowledge | Event buffer metadata | Γ£à Yes |
+| `deliveryCount` | Retry attempt counter | Event buffer metadata | Γ£à Yes |
+| `enqueuedTimeUtc` | When the event was enqueued | Event buffer metadata | Γ£à Yes |
+| `ackDeadlineUtc` | When the peek-ack expires | Event buffer metadata | Γ£à Yes |
+| `trackingId` | Primary correlation ID | `RequestCorrelationContext.CurrentActivityId` | Γ£à Yes |
+| `workflowRunId` | Links to BPM run history | `metadata.FlowRunSequenceId` | Γ£à Yes |
+| `splitOnEnabled` | Whether data is single item or array | `trigger.SplitOn != null` | Γ£à Per poll cycle |
+| `data` | Raw trigger payload from connector | `@triggerBody()` resolved value | Γ£à Yes |
 
 ### Complete envelope example
 
@@ -695,7 +695,7 @@ The envelope carries **only fields that vary per event or are required by the co
 }
 ```
 
-### `data` field — trigger payload
+### `data` field ΓÇö trigger payload
 
 The raw trigger payload from the connector. This is exactly what `@triggerBody()` evaluates to. The Connector Extension deserializes this into the customer's POCO type (e.g., `Office365OnNewEmailTriggerPayload`).
 
@@ -725,16 +725,16 @@ The raw trigger payload from the connector. This is exactly what `@triggerBody()
    with: Authorization: Bearer <token from DefaultAzureCredential>
 
 2. Data plane host receives request
-   → Validates Bearer token (standard AAD validation)
-   → Extracts claims: oid (object ID), tid (tenant ID), exp (expiry)
+   ΓåÆ Validates Bearer token (standard AAD validation)
+   ΓåÆ Extracts claims: oid (object ID), tid (tenant ID), exp (expiry)
 
 3. Checks authorization:
    Does this identity have permission to access this TriggerConfig's data plane?
    Does this identity have an Azure RBAC role assignment on this TriggerConfig resource or the NameSpace resource?
    (Role definition to be finalized during implementation)
 
-4. Yes → request proceeds
-   No → 403 Forbidden
+4. Yes ΓåÆ request proceeds
+   No ΓåÆ 403 Forbidden
 ```
 
 ### Why MI works for both Function Host and Scale Monitor
@@ -743,8 +743,8 @@ Both run from the same Function App deployment:
 
 ```
 Function App (MI objectId: a1b2c3d4-e5f6-7890-abcd-ef1234567890)
-  ├── Worker Pod: Function Host → calls GET /events → Bearer oid = a1b2c3d4...  ✅
-  └── SM Pod: Scale Monitor → calls GET /metrics → Bearer oid = a1b2c3d4...    ✅
+  Γö£ΓöÇΓöÇ Worker Pod: Function Host ΓåÆ calls GET /events ΓåÆ Bearer oid = a1b2c3d4...  Γ£à
+  ΓööΓöÇΓöÇ SM Pod: Scale Monitor ΓåÆ calls GET /metrics ΓåÆ Bearer oid = a1b2c3d4...    Γ£à
 ```
 
 One RBAC role assignment covers both because they share the same Function App Managed Identity.
