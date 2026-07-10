@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mock Data Plane Server — PoC Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; }
+
+    .header { background: #16213e; padding: 14px 24px; border-bottom: 2px solid #e94560; display: flex; align-items: center; gap: 14px; }
+    .header h1 { font-size: 17px; color: #e94560; font-weight: 700; }
+    .badge { background: #0f3460; padding: 3px 10px; border-radius: 12px; font-size: 11px; color: #a0c4ff; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .config-bar { background: #16213e; padding: 8px 24px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #0f3460; flex-wrap: wrap; }
+    .config-bar label { font-size: 11px; color: #888; white-space: nowrap; }
+    .config-bar input { background: #0f3460; border: 1px solid #1a4a8a; color: #e0e0e0; padding: 5px 8px; border-radius: 4px; font-size: 12px; width: 200px; }
+    .config-bar input:focus { outline: none; border-color: #e94560; }
+
+    .main { display: grid; grid-template-columns: 260px 1fr 280px; gap: 12px; padding: 12px; height: calc(100vh - 88px); }
+
+    .panel { background: #16213e; border-radius: 8px; border: 1px solid #0f3460; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 10px 14px; background: #0f3460; font-size: 12px; font-weight: 600; color: #a0c4ff; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .panel-body { padding: 14px; flex: 1; overflow-y: auto; }
+
+    .metric-big { text-align: center; padding: 16px 0 12px; }
+    .metric-big .number { font-size: 72px; font-weight: 800; color: #e94560; line-height: 1; }
+    .metric-big .label { font-size: 11px; color: #888; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+
+    .metric-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #0f3460; font-size: 12px; }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-row .k { color: #888; }
+    .metric-row .v { color: #a0c4ff; font-family: monospace; }
+
+    .target-box { margin-top: 12px; padding: 10px 12px; background: #0f3460; border-radius: 6px; border-left: 3px solid #2ecc71; }
+    .target-box .t-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+    .target-box .t-value { font-size: 32px; font-weight: 700; color: #2ecc71; line-height: 1.2; }
+    .target-box .t-sub { font-size: 10px; color: #888; }
+
+    .ingest-form input { width: 100%; background: #0f3460; border: 1px solid #1a4a8a; color: #e0e0e0; padding: 6px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; }
+    .ingest-form input:focus { outline: none; border-color: #e94560; }
+
+    .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: opacity .15s; }
+    .btn:hover { opacity: .8; }
+    .btn-red    { background: #e94560; color: #fff; }
+    .btn-green  { background: #2ecc71; color: #1a1a2e; }
+    .btn-blue   { background: #3498db; color: #fff; }
+    .btn-ghost  { background: #0f3460; color: #a0c4ff; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-sm { padding: 3px 8px; font-size: 11px; }
+    .btn-full { width: 100%; margin-bottom: 6px; }
+    .btn-row { display: flex; gap: 6px; }
+    .btn-row .btn { flex: 1; }
+
+    .events-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .events-table th { text-align: left; padding: 8px 10px; color: #888; border-bottom: 1px solid #0f3460; font-weight: 500; background: #1a2744; position: sticky; top: 0; }
+    .events-table td { padding: 7px 10px; border-bottom: 1px solid #0f3460; vertical-align: middle; }
+    .events-table tr:hover td { background: #1e2d4a; }
+    .ev-id { font-family: monospace; color: #f39c12; }
+    .ev-from { color: #a0c4ff; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ev-subject { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ev-time { color: #888; font-family: monospace; font-size: 10px; white-space: nowrap; }
+    .badge-pill { background: #e94560; color: #fff; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+
+    .log-entry { padding: 6px 12px; border-bottom: 1px solid #0f3460; font-size: 10px; font-family: monospace; line-height: 1.5; }
+    .log-entry .ts { color: #555; }
+    .log-ts { color: #555; }
+    .log-metrics { color: #a0c4ff; }
+    .log-ingest  { color: #f39c12; }
+    .log-ack     { color: #2ecc71; }
+    .log-error   { color: #e74c3c; }
+    .log-config  { color: #9b59b6; }
+    .log-detail  { color: #ccc; }
+
+    .empty-state { color: #555; text-align: center; padding: 32px 16px; font-size: 12px; }
+    .left-col { display: flex; flex-direction: column; gap: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Mock Data Plane Server</h1>
+  <span class="badge">Phase 2 PoC Dashboard</span>
+  <span style="margin-left:auto;font-size:11px;color:#888;display:flex;align-items:center;gap:6px;">
+    <span class="status-dot"></span> Live · refreshes every 5s
+  </span>
+</div>
+
+<div class="config-bar">
+  <label>Server</label>
+  <input id="cfg-server" value="http://localhost:5100" style="width:160px" />
+  <label>Namespace</label>
+  <input id="cfg-ns" value="t-anabansal-connector-ns2" />
+  <label>TriggerName</label>
+  <input id="cfg-trigger" value="newapp-onnewemail" />
+  <button class="btn btn-red" onclick="applyConfig()">Apply</button>
+</div>
+
+<div class="main">
+
+<!-- LEFT: SM Last Call + Ingest -->
+  <div class="left-col">
+
+    <div class="panel">
+      <div class="panel-header">
+        Last SM /metrics Call
+        <span id="sm-ts" style="font-size:10px;color:#555;"></span>
+      </div>
+      <div class="panel-body">
+        <div class="metric-big">
+          <div class="number" id="pending-count">—</div>
+          <div class="label">Events SM Was Told</div>
+        </div>
+        <div style="margin-top:12px;" id="sm-call-detail"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Inject Test Event</div>
+      <div class="panel-body">
+        <div class="ingest-form">
+          <input id="ingest-from"    placeholder="from@example.com"   value="alice@contoso.com" />
+          <input id="ingest-subject" placeholder="Email subject"       value="Test email from BPM" />
+          <button class="btn btn-green btn-full" onclick="injectOne()">Inject Single Event</button>
+          <div class="btn-row">
+            <button class="btn btn-blue" onclick="injectBatch(10)">+10</button>
+            <button class="btn btn-blue" onclick="injectBatch(32)">+32</button>
+            <button class="btn btn-blue" onclick="injectBatch(50)">+50</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CENTER: Events -->
+  <div class="panel">
+    <div class="panel-header">
+      Pending Events (peek — not consumed until ACK'd)
+      <span id="events-count" class="badge-pill">0</span>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <table class="events-table">
+        <thead>
+          <tr>
+            <th>Event ID</th>
+            <th>From</th>
+            <th>Subject</th>
+            <th>Enqueued</th>
+            <th>Dlv</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="events-body">
+          <tr><td colspan="6" class="empty-state">No events yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT: Activity Log -->
+  <div class="panel">
+    <div class="panel-header">
+      Activity Log
+      <button class="btn btn-ghost btn-sm" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="panel-body" style="padding:0;" id="activity-log">
+      <div class="empty-state">Waiting for activity…</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let cfg = {
+    server:  document.getElementById('cfg-server').value,
+    ns:      document.getElementById('cfg-ns').value,
+    trigger: document.getElementById('cfg-trigger').value
+  };
+
+  let log = [];
+  const loggedSmTs = new Set(); // prevents duplicate SM call entries
+
+  function applyConfig() {
+    cfg.server  = document.getElementById('cfg-server').value.trim();
+    cfg.ns      = document.getElementById('cfg-ns').value.trim();
+    cfg.trigger = document.getElementById('cfg-trigger').value.trim();
+    loggedSmTs.clear();
+    addLog('config', `ns=${cfg.ns}  trigger=${cfg.trigger}`);
+    refresh();
+  }
+
+  function qs(path, extra) {
+    const base = `${cfg.server}${path}?namespace=${encodeURIComponent(cfg.ns)}&triggerName=${encodeURIComponent(cfg.trigger)}`;
+    return extra ? base + extra : base;
+  }
+
+  // ── SM Call Log (via /status) ────────────────────────────────────────────
+  async function refreshSmCalls() {
+    try {
+      const r = await fetch(`${cfg.server}/status`);
+      const d = await r.json();
+      const calls = (d.smCalls || []).filter(c =>
+        c.namespace === cfg.ns && c.triggerName === cfg.trigger
+      );
+
+      if (calls.length === 0) {
+        document.getElementById('pending-count').textContent = '—';
+        document.getElementById('sm-ts').textContent = 'No SM calls yet for this namespace/trigger';
+        document.getElementById('sm-call-detail').innerHTML = '<div style="color:#555;font-size:11px;">Waiting for SM to poll…</div>';
+        return;
+      }
+
+      const latest = calls[0];
+      const pending = latest.pendingCount;
+
+      document.getElementById('pending-count').textContent  = pending;
+      document.getElementById('sm-ts').textContent = new Date(latest.timestampUtc).toLocaleTimeString();
+      document.getElementById('sm-call-detail').innerHTML = `
+        <div class="metric-row"><span class="k">namespace</span><span class="v" style="font-size:10px">${latest.namespace}</span></div>
+        <div class="metric-row"><span class="k">triggerName</span><span class="v">${latest.triggerName}</span></div>
+        <div class="metric-row"><span class="k">total SM calls</span><span class="v">${calls.length}</span></div>
+      `;
+
+      // Log only SM calls we haven't seen yet (Set prevents duplicates from concurrent refreshes)
+      calls.forEach(c => {
+        if (!loggedSmTs.has(c.timestampUtc)) {
+          loggedSmTs.add(c.timestampUtc);
+          addLog('metrics', `SM poll → provided pendingCount=${c.pendingCount}`);
+        }
+      });
+
+      if (calls.length > 0) lastSmCallTs = calls[0].timestampUtc;
+
+    } catch (e) {
+      addLog('error', `status: ${e.message}`);
+    }
+  }
+
+  // ── Events ───────────────────────────────────────────────────────────────
+  async function refreshEvents() {
+    try {
+      const r = await fetch(qs('/events', '&maxMessages=200&_src=ui'));
+      const d = await r.json();
+      const evts = d.value || [];
+
+      document.getElementById('events-count').textContent = evts.length;
+
+      const tbody = document.getElementById('events-body');
+      if (!evts.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No pending events</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = evts.map(e => {
+        let from = '—', subject = '—';
+        try {
+          const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+          const item = data?.body?.value?.[0] ?? data?.body ?? data ?? {};
+          from    = item.from    || item.From    || '—';
+          subject = item.subject || item.Subject || JSON.stringify(data).substring(0, 60);
+        } catch {}
+        const ts      = new Date(e.enqueuedTimeUtc).toLocaleTimeString();
+        const shortId = e.eventId.substring(0, 8) + '…';
+        return `<tr>
+          <td><span class="ev-id" title="${e.eventId}">${shortId}</span></td>
+          <td><span class="ev-from" title="${from}">${from}</span></td>
+          <td><span class="ev-subject" title="${subject}">${subject}</span></td>
+          <td><span class="ev-time">${ts}</span></td>
+          <td>${e.deliveryCount}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="ackEvent('${e.eventId}','${e.ackToken}')">ACK</button></td>
+        </tr>`;
+      }).join('');
+    } catch (e) {
+      addLog('error', `events: ${e.message}`);
+    }
+  }
+
+  // ── ACK ──────────────────────────────────────────────────────────────────
+  async function ackEvent(eventId, ackToken) {
+    try {
+      const r = await fetch(qs('/events/acknowledge'), {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ events: [{ eventId, ackToken }] })
+      });
+      const d = await r.json();
+      addLog('ack', `ACK ${eventId.substring(0,8)}…  acked=${d.acknowledged} failed=${d.failed}`);
+      refresh();
+    } catch (e) {
+      addLog('error', `ack: ${e.message}`);
+    }
+  }
+
+  // ── Ingest ───────────────────────────────────────────────────────────────
+  async function injectOne() {
+    const from    = document.getElementById('ingest-from').value;
+    const subject = document.getElementById('ingest-subject').value;
+    const body    = JSON.stringify({ body: { value: [{ id: `demo-${Date.now()}`, subject, from, isRead: false }] } });
+    try {
+      await fetch(qs('/ingest'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+      addLog('ingest', `from="${from}"  subject="${subject}"`);
+      refresh();
+    } catch (e) { addLog('error', `ingest: ${e.message}`); }
+  }
+
+  async function injectBatch(n) {
+    const from = document.getElementById('ingest-from').value;
+    for (let i = 0; i < n; i++) {
+      const body = JSON.stringify({ body: { value: [{ id: `batch-${Date.now()}-${i}`, subject: `Batch email ${i+1}`, from, isRead: false }] } });
+      await fetch(qs('/ingest'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    }
+    addLog('ingest', `batch of ${n} events injected`);
+    refresh();
+  }
+
+  // ── Log ──────────────────────────────────────────────────────────────────
+  function addLog(type, msg) {
+    const ts = new Date().toLocaleTimeString();
+    log.unshift({ ts, type, msg });
+    if (log.length > 200) log.pop();
+    renderLog();
+  }
+
+  function renderLog() {
+    const el = document.getElementById('activity-log');
+    if (!log.length) { el.innerHTML = '<div class="empty-state">No activity yet</div>'; return; }
+    el.innerHTML = log.map(e =>
+      `<div class="log-entry">
+        <span class="log-ts">${e.ts}</span>
+        <span class="log-${e.type}"> [${e.type}]</span>
+        <span class="log-detail"> ${e.msg}</span>
+      </div>`
+    ).join('');
+  }
+
+  function clearLog() { log = []; renderLog(); }
+
+  // ── Loop ─────────────────────────────────────────────────────────────────
+  async function refresh() {
+    await Promise.all([refreshSmCalls(), refreshEvents()]);
+  }
+
+  refresh();
+  setInterval(refresh, 3000);
+</script>
+</body>
+</html>

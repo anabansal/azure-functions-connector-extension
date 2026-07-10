@@ -30,19 +30,28 @@ internal sealed class ConnectorMetricsProvider
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public Task<ConnectorTriggerMetrics> GetMetricsAsync()
+    public async Task<ConnectorTriggerMetrics> GetMetricsAsync()
     {
+        // POC Phase 2: if data plane endpoint is configured, call the real server.
+        var endpoint = Environment.GetEnvironmentVariable(ConnectorDataPlaneClient.EndpointEnvVar);
+        if (!string.IsNullOrWhiteSpace(endpoint))
+        {
+            return await ConnectorDataPlaneClient.GetMetricsAsync(
+                endpoint, _connectorNamespace, _triggerName, _logger);
+        }
+
+        // Phase 1 mock fallback — unchanged.
         int pending = ResolveMockPendingEvents();
 
         _logger.LogDebug(
             "ConnectorMetricsProvider mock metrics for {FunctionName} (connectorNamespace={ConnectorNamespace}, triggerName={TriggerName}): {Pending} pending events",
             _functionName, _connectorNamespace ?? "<none>", _triggerName ?? "<none>", pending);
 
-        return Task.FromResult(new ConnectorTriggerMetrics
+        return new ConnectorTriggerMetrics
         {
             PendingEvents = pending,
             SampledAtUtc = DateTime.UtcNow
-        });
+        };
     }
 
     private int ResolveMockPendingEvents()
